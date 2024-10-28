@@ -1,0 +1,15 @@
+[Unit]
+Description=Simple Milter Service
+After=network.target
+
+[Service]
+User=root
+WorkingDirectory=/home/xave/Scrivania/milter
+StandardOutput=file:/var/log/simple_milter.log
+StandardError=file:/var/log/simple_milter.log
+ExecStart=/usr/bin/python3 simple_milter.py
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+

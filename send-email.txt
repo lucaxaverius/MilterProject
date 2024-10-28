@@ -1,0 +1,5 @@
+# Email without attchaments
+echo -e "Subject: Test email\n\nQuesto è un test con la parola block nel corpo del messaggio." | sendmail xave@localhost
+
+# Email with attachemnt
+echo "This is the body of the email, and it contains the magic keyword block" | mailx -s "Test Email with Attachment" -A /home/xave/Scrivania/milter/send-email.txt xave@localhost
