@@ -6,10 +6,8 @@ from io import BytesIO
 import time
 from Milter.utils import parse_addr
 from socket import AF_INET, AF_INET6
-from multiprocessing import Process as Thread, Queue
+from multiprocessing import Process as Thread
 from email.message import EmailMessage
-
-logq = Queue(maxsize=4)
 
 class SimpleMilter(Milter.Base):
     """
@@ -107,17 +105,16 @@ class SimpleMilter(Milter.Base):
                 # Simulate API request to send the attachment
                 files = {'file': (filename, file_data)}
                 response = requests.post("https://jsonplaceholder.typicode.com/posts", files=files)
-                #response = requests.get("https://jsonplaceholder.typicode.com/posts/1")
-
+                
                 if response.status_code == 201:
                     self.log(f"Attachment {filename} sent successfully.")
                     # Extract the 'body' field from the response (assuming JSON format)
                     response_data = response.json()
                     if isinstance(response_data, list) and len(response_data) > 0:
-                        response_title = response_data.get("body", "No body found in response")
-                        self.log(f"Response Body: {response_title}")
+                        response_body = response_data[0].get("body", "No body found in response")
+                        self.log(f"Response Body: {response_body}")
                     else:
-                       self.log(f"Unexpected response format: {response.text}")
+                        self.log(f"Unexpected response format: {response.text}")
                 else:
                     self.log(f"Failed to send attachment {filename}: {response.status_code}")
                     self.log(f"Response: {response.text}")
@@ -126,32 +123,20 @@ class SimpleMilter(Milter.Base):
         
     def log(self, message):
         """
-        Logs messages to the shared logging queue.
+        Logs messages directly to a log file.
 
         Args:
             message (str): The message to be logged.
         """
-        logq.put((message, self.id, time.time()))
-
-def background_log():
-    """
-    Background thread to process and print log messages from the logging queue.
-    """
-    while True:
-        log_entry = logq.get()
-        if log_entry is None:
-            break
-        msg, id, timestamp = log_entry
-        print(f"{time.strftime('%Y-%b-%d %H:%M:%S', time.localtime(timestamp))} [{id}] {msg}")
+        timestamp = time.strftime('%Y-%b-%d %H:%M:%S', time.localtime(time.time()))
+        with open('/var/log/simple_milter.log', 'a') as log_file:
+            log_file.write(f"{timestamp} [{self.id}] {message}\n")
 
 def main():
     """
     Main function to start the Milter and logging process.
     Sets up the Milter to listen on a specified socket and handles incoming email messages.
     """
-    log_thread = Thread(target=background_log)
-    log_thread.start()
-    
     # Define the socket to listen on (TCP socket on localhost:9900)
     socketname = "inet:9900@localhost"
     timeout = 600
@@ -165,8 +150,6 @@ def main():
     sys.stdout.flush()
     Milter.runmilter("simplefilter", socketname, timeout)
 
-    logq.put(None)
-    log_thread.join()
     print(f"{time.strftime('%Y-%b-%d %H:%M:%S')} - SimpleMilter arrestato.")
 
 if __name__ == "__main__":
